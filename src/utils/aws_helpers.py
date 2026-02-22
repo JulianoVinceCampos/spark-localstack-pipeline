@@ -2,7 +2,6 @@
 AWS / LocalStack helper utilities.
 """
 import os
-from typing import List, Optional
 
 import boto3
 from botocore.exceptions import ClientError
