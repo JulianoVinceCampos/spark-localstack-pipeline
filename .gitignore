@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+.venv/
+venv/
+env/
+
+# Testing
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# Environment
+.env
+*.env.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Data files (generated)
+data/sample/*.csv
+data/sample/*.parquet
+
+# Docker
+docker-compose.override.yml
+
+# LocalStack persistence
+localstack-data/
+
+# Spark
+spark-logs/
+spark-warehouse/
+derby.log
+metastore_db/
+
+# macOS
+.DS_Store
