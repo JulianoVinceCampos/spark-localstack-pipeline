@@ -9,7 +9,7 @@ from loguru import logger
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 
-def get_s3_client(endpoint_url: Optional[str] = None):
+def get_s3_client(endpoint_url: str | None = None):
     """Return a boto3 S3 client pointing at LocalStack (or real AWS)."""
     return boto3.client(
         "s3",
