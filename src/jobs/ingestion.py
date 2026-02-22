@@ -5,6 +5,7 @@ Reads Silver Parquet and produces three Gold aggregations:
   2. product_performance – top products by revenue
   3. customer_segments  – RFM-style segmentation
 """
+
 from loguru import logger
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as F

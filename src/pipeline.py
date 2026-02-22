@@ -7,6 +7,7 @@ Usage:
     python -m src.pipeline --steps ingestion
     python -m src.pipeline --steps transformation,load
 """
+
 import os
 import sys
 import time
@@ -21,11 +22,11 @@ from src.utils.aws_helpers import ensure_bucket
 from src.utils.spark_session import get_spark_session, stop_spark
 
 # ── Defaults from environment ──────────────────────────────────────────────────
-BUCKET       = os.getenv("S3_BUCKET",    "pipeline-data")
-BRONZE_PATH  = os.getenv("BRONZE_PATH",  f"s3a://{BUCKET}/bronze/sales")
-SILVER_PATH  = os.getenv("SILVER_PATH",  f"s3a://{BUCKET}/silver/sales")
-GOLD_PATH    = os.getenv("GOLD_PATH",    f"s3a://{BUCKET}/gold")
-SOURCE_PATH  = os.getenv("SOURCE_PATH",  f"s3a://{BUCKET}/bronze/sales/*/*/sales_raw.csv")
+BUCKET = os.getenv("S3_BUCKET", "pipeline-data")
+BRONZE_PATH = os.getenv("BRONZE_PATH", f"s3a://{BUCKET}/bronze/sales")
+SILVER_PATH = os.getenv("SILVER_PATH", f"s3a://{BUCKET}/silver/sales")
+GOLD_PATH = os.getenv("GOLD_PATH", f"s3a://{BUCKET}/gold")
+SOURCE_PATH = os.getenv("SOURCE_PATH", f"s3a://{BUCKET}/bronze/sales/*/*/sales_raw.csv")
 
 ALL_STEPS = ["ingestion", "transformation", "load"]
 

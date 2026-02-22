@@ -1,6 +1,7 @@
 """
 AWS / LocalStack helper utilities.
 """
+
 import os
 
 import boto3

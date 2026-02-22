@@ -5,6 +5,7 @@ Generate synthetic e-commerce sales data and upload to S3 Bronze layer.
 Usage:
     python scripts/generate_data.py --rows 10000 --upload
 """
+
 import csv
 import os
 import random
@@ -100,7 +101,9 @@ def upload_to_s3(local_path: Path, bucket: str, s3_key: str, endpoint_url: str) 
 
 @click.command()
 @click.option("--rows", default=50000, show_default=True, help="Number of orders to generate")
-@click.option("--output", default="data/sample/sales_raw.csv", show_default=True, help="Local output path")
+@click.option(
+    "--output", default="data/sample/sales_raw.csv", show_default=True, help="Local output path"
+)
 @click.option(
     "--upload/--no-upload",
     default=True,
@@ -108,7 +111,9 @@ def upload_to_s3(local_path: Path, bucket: str, s3_key: str, endpoint_url: str) 
     help="Upload to S3 bronze layer",
 )
 @click.option("--bucket", default="pipeline-data", show_default=True, help="S3 bucket name")
-@click.option("--endpoint", default="http://localhost:4566", show_default=True, help="S3 endpoint URL")
+@click.option(
+    "--endpoint", default="http://localhost:4566", show_default=True, help="S3 endpoint URL"
+)
 def main(rows: int, output: str, upload: bool, bucket: str, endpoint: str) -> None:
     """Generate synthetic e-commerce data and load into the Bronze layer."""
     output_path = Path(output)

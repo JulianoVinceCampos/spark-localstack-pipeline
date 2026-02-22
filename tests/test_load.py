@@ -1,6 +1,7 @@
 """
 Unit tests for the load job (Gold layer — data marts).
 """
+
 import pytest
 from pyspark.sql import functions as F
 
@@ -31,8 +32,15 @@ def silver_df(sample_orders_df):
 class TestSalesByRegion:
     def test_has_expected_columns(self, silver_df):
         mart = build_sales_by_region(silver_df)
-        required = {"region", "order_year", "order_month", "total_orders",
-                    "total_revenue", "avg_order_value", "unique_customers"}
+        required = {
+            "region",
+            "order_year",
+            "order_month",
+            "total_orders",
+            "total_revenue",
+            "avg_order_value",
+            "unique_customers",
+        }
         assert required.issubset(set(mart.columns))
 
     def test_total_revenue_positive(self, silver_df):
@@ -55,8 +63,15 @@ class TestSalesByRegion:
 class TestProductPerformance:
     def test_has_expected_columns(self, silver_df):
         mart = build_product_performance(silver_df)
-        required = {"product_id", "product_name", "category", "total_revenue",
-                    "total_units", "total_orders", "rank_in_category"}
+        required = {
+            "product_id",
+            "product_name",
+            "category",
+            "total_revenue",
+            "total_units",
+            "total_orders",
+            "rank_in_category",
+        }
         assert required.issubset(set(mart.columns))
 
     def test_rank_in_category_positive(self, silver_df):
@@ -72,8 +87,17 @@ class TestProductPerformance:
 class TestCustomerSegments:
     def test_has_expected_columns(self, silver_df):
         mart = build_customer_segments(silver_df)
-        required = {"customer_id", "frequency", "monetary", "recency_days",
-                    "r_score", "f_score", "m_score", "rfm_score", "segment"}
+        required = {
+            "customer_id",
+            "frequency",
+            "monetary",
+            "recency_days",
+            "r_score",
+            "f_score",
+            "m_score",
+            "rfm_score",
+            "segment",
+        }
         assert required.issubset(set(mart.columns))
 
     def test_segment_values_valid(self, silver_df):

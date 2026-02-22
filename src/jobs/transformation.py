@@ -3,13 +3,21 @@ Transformation Job — Silver Layer
 Reads Bronze Parquet, applies business rules, deduplicates, cleans data,
 and writes enriched Parquet to the Silver layer.
 """
+
 from loguru import logger
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as F
 from pyspark.sql.window import Window
 
 VALID_STATUSES = {"completed", "pending", "cancelled", "refunded"}
-VALID_CATEGORIES = {"Electronics", "Clothing", "Books", "Home & Garden", "Sports", "Food & Beverages"}
+VALID_CATEGORIES = {
+    "Electronics",
+    "Clothing",
+    "Books",
+    "Home & Garden",
+    "Sports",
+    "Food & Beverages",
+}
 
 
 def read_bronze(spark: SparkSession, bronze_path: str) -> DataFrame:
@@ -27,7 +35,11 @@ def deduplicate(df: DataFrame) -> DataFrame:
     """
     logger.info("Deduplicating by order_id...")
     window = Window.partitionBy("order_id").orderBy(F.col("_ingested_at").desc())
-    df_deduped = df.withColumn("_rank", F.row_number().over(window)).filter(F.col("_rank") == 1).drop("_rank")
+    df_deduped = (
+        df.withColumn("_rank", F.row_number().over(window))
+        .filter(F.col("_rank") == 1)
+        .drop("_rank")
+    )
     removed = df.count() - df_deduped.count()
     logger.info(f"Removed {removed:,} duplicate records")
     return df_deduped
@@ -54,7 +66,9 @@ def clean_and_standardize(df: DataFrame) -> DataFrame:
         # Invalid status → null
         .withColumn(
             "status",
-            F.when(F.col("status").isin(list(VALID_STATUSES)), F.col("status")).otherwise(F.lit(None)),
+            F.when(F.col("status").isin(list(VALID_STATUSES)), F.col("status")).otherwise(
+                F.lit(None)
+            ),
         )
         # Negative prices → null
         .withColumn(
@@ -70,7 +84,9 @@ def clean_and_standardize(df: DataFrame) -> DataFrame:
         .withColumn("order_date", F.to_timestamp(F.col("order_date"), "yyyy-MM-dd HH:mm:ss"))
         # Recalculate derived financials to ensure consistency
         .withColumn("gross_revenue", F.round(F.col("quantity") * F.col("unit_price"), 2))
-        .withColumn("discount_amount", F.round(F.col("gross_revenue") * F.col("discount_pct") / 100, 2))
+        .withColumn(
+            "discount_amount", F.round(F.col("gross_revenue") * F.col("discount_pct") / 100, 2)
+        )
         .withColumn("net_revenue", F.round(F.col("gross_revenue") - F.col("discount_amount"), 2))
     )
 
@@ -95,7 +111,9 @@ def add_silver_columns(df: DataFrame) -> DataFrame:
 def write_silver(df: DataFrame, silver_path: str) -> int:
     """Write Silver Parquet, partitioned by year/month/category."""
     logger.info(f"Writing Silver Parquet to: {silver_path}")
-    df.write.mode("overwrite").partitionBy("order_year", "order_month", "category").parquet(silver_path)
+    df.write.mode("overwrite").partitionBy("order_year", "order_month", "category").parquet(
+        silver_path
+    )
     count = df.count()
     logger.success(f"Silver layer written: {count:,} records → {silver_path}")
     return count

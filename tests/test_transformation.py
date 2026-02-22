@@ -1,6 +1,7 @@
 """
 Unit tests for the transformation job (Silver layer).
 """
+
 import pytest
 from pyspark.sql import functions as F
 
@@ -88,9 +89,7 @@ class TestCleanAndStandardize:
     def test_email_lowercased(self, bronze_df):
         cleaned = clean_and_standardize(deduplicate(bronze_df))
         emails = [
-            r.customer_email
-            for r in cleaned.select("customer_email").collect()
-            if r.customer_email
+            r.customer_email for r in cleaned.select("customer_email").collect() if r.customer_email
         ]
         assert all(e == e.lower() for e in emails)
 
@@ -113,9 +112,7 @@ class TestAddSilverColumns:
         silver = add_silver_columns(cleaned)
         valid_buckets = {"low", "medium", "high", "premium"}
         buckets = {
-            r.revenue_bucket
-            for r in silver.select("revenue_bucket").collect()
-            if r.revenue_bucket
+            r.revenue_bucket for r in silver.select("revenue_bucket").collect() if r.revenue_bucket
         }
         assert buckets.issubset(valid_buckets)
 

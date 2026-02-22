@@ -1,6 +1,7 @@
 """
 Spark session factory — pre-configured for LocalStack S3A access.
 """
+
 import os
 
 from loguru import logger
@@ -32,8 +33,7 @@ def get_spark_session(
     logger.info(f"Creating SparkSession: app={app_name!r}, master={master_url!r}")
 
     spark = (
-        SparkSession.builder
-        .appName(app_name)
+        SparkSession.builder.appName(app_name)
         .master(master_url)
         # ── S3A / LocalStack ──────────────────────────────────────────────────
         .config("spark.hadoop.fs.s3a.endpoint", aws_endpoint)
