@@ -1,6 +1,5 @@
 # 🚀 Spark × LocalStack — End-to-End Data Pipeline
 
-[![CI/CD](https://github.com/YOUR_USERNAME/spark-localstack-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/spark-localstack-pipeline/actions)
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/)
 [![PySpark 3.5](https://img.shields.io/badge/pyspark-3.5.1-orange.svg)](https://spark.apache.org/)
 [![LocalStack](https://img.shields.io/badge/localstack-3.4-green.svg)](https://localstack.cloud/)
