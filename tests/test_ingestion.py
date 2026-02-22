@@ -1,7 +1,8 @@
 """
 Unit tests for the ingestion job (Bronze layer).
 """
-from pyspark.sql import DataFrame, functions as F
+from pyspark.sql import DataFrame
+from pyspark.sql import functions as F
 
 from src.jobs.ingestion import add_ingestion_metadata, validate_schema
 
