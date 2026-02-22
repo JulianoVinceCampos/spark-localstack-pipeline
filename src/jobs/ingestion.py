@@ -6,8 +6,7 @@ and writes Parquet to the Bronze layer.
 from datetime import datetime
 
 from loguru import logger
-from pyspark.sql import DataFrame, SparkSession
-from pyspark.sql import functions as F
+from pyspark.sql import DataFrame, SparkSession, functions as F
 from pyspark.sql.types import (
     DoubleType,
     IntegerType,
@@ -17,32 +16,33 @@ from pyspark.sql.types import (
     TimestampType,
 )
 
-# ── Raw CSV schema ─────────────────────────────────────────────────────────────
-RAW_SCHEMA = StructType([
-    StructField("order_id",        StringType(),    nullable=False),
-    StructField("customer_id",     StringType(),    nullable=False),
-    StructField("customer_name",   StringType(),    nullable=True),
-    StructField("customer_email",  StringType(),    nullable=True),
-    StructField("region",          StringType(),    nullable=True),
-    StructField("city",            StringType(),    nullable=True),
-    StructField("state",           StringType(),    nullable=True),
-    StructField("product_id",      StringType(),    nullable=False),
-    StructField("product_name",    StringType(),    nullable=True),
-    StructField("category",        StringType(),    nullable=True),
-    StructField("quantity",        IntegerType(),   nullable=True),
-    StructField("unit_price",      DoubleType(),    nullable=True),
-    StructField("discount_pct",    DoubleType(),    nullable=True),
-    StructField("discount_amount", DoubleType(),    nullable=True),
-    StructField("gross_revenue",   DoubleType(),    nullable=True),
-    StructField("net_revenue",     DoubleType(),    nullable=True),
-    StructField("payment_method",  StringType(),    nullable=True),
-    StructField("status",          StringType(),    nullable=True),
-    StructField("order_date",      StringType(),    nullable=True),
-    StructField("order_year",      IntegerType(),   nullable=True),
-    StructField("order_month",     IntegerType(),   nullable=True),
-    StructField("order_day",       IntegerType(),   nullable=True),
-    StructField("created_at",      StringType(),    nullable=True),
-])
+RAW_SCHEMA = StructType(
+    [
+        StructField("order_id", StringType(), nullable=False),
+        StructField("customer_id", StringType(), nullable=False),
+        StructField("customer_name", StringType(), nullable=True),
+        StructField("customer_email", StringType(), nullable=True),
+        StructField("region", StringType(), nullable=True),
+        StructField("city", StringType(), nullable=True),
+        StructField("state", StringType(), nullable=True),
+        StructField("product_id", StringType(), nullable=False),
+        StructField("product_name", StringType(), nullable=True),
+        StructField("category", StringType(), nullable=True),
+        StructField("quantity", IntegerType(), nullable=True),
+        StructField("unit_price", DoubleType(), nullable=True),
+        StructField("discount_pct", DoubleType(), nullable=True),
+        StructField("discount_amount", DoubleType(), nullable=True),
+        StructField("gross_revenue", DoubleType(), nullable=True),
+        StructField("net_revenue", DoubleType(), nullable=True),
+        StructField("payment_method", StringType(), nullable=True),
+        StructField("status", StringType(), nullable=True),
+        StructField("order_date", StringType(), nullable=True),
+        StructField("order_year", IntegerType(), nullable=True),
+        StructField("order_month", IntegerType(), nullable=True),
+        StructField("order_day", IntegerType(), nullable=True),
+        StructField("created_at", StringType(), nullable=True),
+    ]
+)
 
 REQUIRED_COLUMNS = ["order_id", "customer_id", "product_id"]
 
@@ -51,8 +51,7 @@ def read_raw_csv(spark: SparkSession, source_path: str) -> DataFrame:
     """Read raw CSV files from S3 with schema enforcement."""
     logger.info(f"Reading raw CSV from: {source_path}")
     df = (
-        spark.read
-        .option("header", "true")
+        spark.read.option("header", "true")
         .option("mode", "PERMISSIVE")
         .option("columnNameOfCorruptRecord", "_corrupt_record")
         .schema(RAW_SCHEMA)
@@ -70,7 +69,6 @@ def validate_schema(df: DataFrame) -> DataFrame:
     """
     logger.info("Validating schema and required fields...")
 
-    # Flag records missing required keys
     valid_condition = F.lit(True)
     for col in REQUIRED_COLUMNS:
         valid_condition = valid_condition & F.col(col).isNotNull()
@@ -87,23 +85,20 @@ def validate_schema(df: DataFrame) -> DataFrame:
 def add_ingestion_metadata(df: DataFrame, source_path: str) -> DataFrame:
     """Enrich records with pipeline metadata columns."""
     ingestion_ts = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    pipeline_run_id = ingestion_ts.replace(" ", "T").replace(":", "")
+
     return (
-        df
-        .withColumn("_ingested_at",    F.lit(ingestion_ts).cast(TimestampType()))
-        .withColumn("_source_path",    F.lit(source_path))
-        .withColumn("_pipeline_run_id", F.lit(ingestion_ts.replace(" ", "T").replace(":", "")))
+        df.withColumn("_ingested_at", F.lit(ingestion_ts).cast(TimestampType()))
+        .withColumn("_source_path", F.lit(source_path))
+        .withColumn("_pipeline_run_id", F.lit(pipeline_run_id))
     )
 
 
 def write_bronze(df: DataFrame, bronze_path: str) -> int:
     """Write validated data as partitioned Parquet to bronze layer."""
     logger.info(f"Writing Bronze Parquet to: {bronze_path}")
-    (
-        df.write
-        .mode("append")
-        .partitionBy("order_year", "order_month")
-        .parquet(bronze_path)
-    )
+    df.write.mode("append").partitionBy("order_year", "order_month").parquet(bronze_path)
+
     count = df.count()
     logger.success(f"Bronze layer written: {count:,} records → {bronze_path}")
     return count
