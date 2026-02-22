@@ -1,13 +1,9 @@
 """
 Unit tests for the ingestion job (Bronze layer).
 """
-import pytest
-from pyspark.sql import SparkSession, functions as F
+from pyspark.sql import DataFrame, functions as F
 
-from src.jobs.ingestion import (
-    add_ingestion_metadata,
-    validate_schema,
-)
+from src.jobs.ingestion import add_ingestion_metadata, validate_schema
 
 
 class TestValidateSchema:
@@ -19,8 +15,7 @@ class TestValidateSchema:
         result = validate_schema(sample_orders_df)
         assert result.count() >= 5
 
-    def test_returns_dataframe(self, spark, sample_orders_df):
-        from pyspark.sql import DataFrame
+    def test_returns_dataframe(self, sample_orders_df):
         result = validate_schema(sample_orders_df)
         assert isinstance(result, DataFrame)
 
