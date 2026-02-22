@@ -4,11 +4,10 @@ Reads Bronze Parquet, applies business rules, deduplicates, cleans data,
 and writes enriched Parquet to the Silver layer.
 """
 from loguru import logger
-from pyspark.sql import DataFrame, SparkSession
-from pyspark.sql import functions as F
+from pyspark.sql import DataFrame, SparkSession, functions as F
 from pyspark.sql.window import Window
 
-VALID_STATUSES   = {"completed", "pending", "cancelled", "refunded"}
+VALID_STATUSES = {"completed", "pending", "cancelled", "refunded"}
 VALID_CATEGORIES = {"Electronics", "Clothing", "Books", "Home & Garden", "Sports", "Food & Beverages"}
 
 
@@ -27,12 +26,7 @@ def deduplicate(df: DataFrame) -> DataFrame:
     """
     logger.info("Deduplicating by order_id...")
     window = Window.partitionBy("order_id").orderBy(F.col("_ingested_at").desc())
-    df_deduped = (
-        df
-        .withColumn("_rank", F.row_number().over(window))
-        .filter(F.col("_rank") == 1)
-        .drop("_rank")
-    )
+    df_deduped = df.withColumn("_rank", F.row_number().over(window)).filter(F.col("_rank") == 1).drop("_rank")
     removed = df.count() - df_deduped.count()
     logger.info(f"Removed {removed:,} duplicate records")
     return df_deduped
@@ -51,62 +45,56 @@ def clean_and_standardize(df: DataFrame) -> DataFrame:
     return (
         df
         # String normalization
-        .withColumn("status",          F.trim(F.lower(F.col("status"))))
-        .withColumn("category",        F.trim(F.initcap(F.col("category"))))
-        .withColumn("region",          F.trim(F.col("region")))
-        .withColumn("payment_method",  F.trim(F.lower(F.col("payment_method"))))
-        .withColumn("customer_email",  F.trim(F.lower(F.col("customer_email"))))
+        .withColumn("status", F.trim(F.lower(F.col("status"))))
+        .withColumn("category", F.trim(F.initcap(F.col("category"))))
+        .withColumn("region", F.trim(F.col("region")))
+        .withColumn("payment_method", F.trim(F.lower(F.col("payment_method"))))
+        .withColumn("customer_email", F.trim(F.lower(F.col("customer_email"))))
         # Invalid status → null
-        .withColumn("status",
-            F.when(F.col("status").isin(list(VALID_STATUSES)), F.col("status")).otherwise(F.lit(None)))
+        .withColumn(
+            "status",
+            F.when(F.col("status").isin(list(VALID_STATUSES)), F.col("status")).otherwise(F.lit(None)),
+        )
         # Negative prices → null
-        .withColumn("unit_price",
-            F.when(F.col("unit_price") > 0, F.col("unit_price")).otherwise(F.lit(None)))
+        .withColumn(
+            "unit_price",
+            F.when(F.col("unit_price") > 0, F.col("unit_price")).otherwise(F.lit(None)),
+        )
         # Clamp quantity [1, 100]
-        .withColumn("quantity",
-            F.when(F.col("quantity").between(1, 100), F.col("quantity")).otherwise(F.lit(None)))
+        .withColumn(
+            "quantity",
+            F.when(F.col("quantity").between(1, 100), F.col("quantity")).otherwise(F.lit(None)),
+        )
         # Parse timestamps
-        .withColumn("order_date",
-            F.to_timestamp(F.col("order_date"), "yyyy-MM-dd HH:mm:ss"))
+        .withColumn("order_date", F.to_timestamp(F.col("order_date"), "yyyy-MM-dd HH:mm:ss"))
         # Recalculate derived financials to ensure consistency
-        .withColumn("gross_revenue",
-            F.round(F.col("quantity") * F.col("unit_price"), 2))
-        .withColumn("discount_amount",
-            F.round(F.col("gross_revenue") * F.col("discount_pct") / 100, 2))
-        .withColumn("net_revenue",
-            F.round(F.col("gross_revenue") - F.col("discount_amount"), 2))
+        .withColumn("gross_revenue", F.round(F.col("quantity") * F.col("unit_price"), 2))
+        .withColumn("discount_amount", F.round(F.col("gross_revenue") * F.col("discount_pct") / 100, 2))
+        .withColumn("net_revenue", F.round(F.col("gross_revenue") - F.col("discount_amount"), 2))
     )
 
 
 def add_silver_columns(df: DataFrame) -> DataFrame:
     """Add derived / enrichment columns for the Silver layer."""
     return (
-        df
-        .withColumn("revenue_bucket",
-            F.when(F.col("net_revenue") < 100,   F.lit("low"))
-             .when(F.col("net_revenue") < 500,   F.lit("medium"))
-             .when(F.col("net_revenue") < 2000,  F.lit("high"))
-             .otherwise(F.lit("premium")))
-        .withColumn("is_discounted",
-            F.col("discount_pct") > 0)
-        .withColumn("order_quarter",
-            F.quarter(F.col("order_date")))
-        .withColumn("order_week",
-            F.weekofyear(F.col("order_date")))
-        .withColumn("_transformed_at",
-            F.current_timestamp())
+        df.withColumn(
+            "revenue_bucket",
+            F.when(F.col("net_revenue") < 100, F.lit("low"))
+            .when(F.col("net_revenue") < 500, F.lit("medium"))
+            .when(F.col("net_revenue") < 2000, F.lit("high"))
+            .otherwise(F.lit("premium")),
+        )
+        .withColumn("is_discounted", F.col("discount_pct") > 0)
+        .withColumn("order_quarter", F.quarter(F.col("order_date")))
+        .withColumn("order_week", F.weekofyear(F.col("order_date")))
+        .withColumn("_transformed_at", F.current_timestamp())
     )
 
 
 def write_silver(df: DataFrame, silver_path: str) -> int:
     """Write Silver Parquet, partitioned by year/month/category."""
     logger.info(f"Writing Silver Parquet to: {silver_path}")
-    (
-        df.write
-        .mode("overwrite")
-        .partitionBy("order_year", "order_month", "category")
-        .parquet(silver_path)
-    )
+    df.write.mode("overwrite").partitionBy("order_year", "order_month", "category").parquet(silver_path)
     count = df.count()
     logger.success(f"Silver layer written: {count:,} records → {silver_path}")
     return count
