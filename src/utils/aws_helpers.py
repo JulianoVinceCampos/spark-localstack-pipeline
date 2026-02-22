@@ -20,7 +20,7 @@ def get_s3_client(endpoint_url: str | None = None):
     )
 
 
-def bucket_exists(bucket: str, endpoint_url: Optional[str] = None) -> bool:
+def bucket_exists(bucket: str, endpoint_url: str | None = None) -> bool:
     """Check whether an S3 bucket exists."""
     s3 = get_s3_client(endpoint_url)
     try:
@@ -31,7 +31,7 @@ def bucket_exists(bucket: str, endpoint_url: Optional[str] = None) -> bool:
 
 
 @retry(stop=stop_after_attempt(5), wait=wait_exponential(min=1, max=10))
-def ensure_bucket(bucket: str, region: str = "us-east-1", endpoint_url: Optional[str] = None) -> None:
+def ensure_bucket(bucket: str, region: str = "us-east-1", endpoint_url: str | None = None) -> None:
     """Create an S3 bucket if it does not already exist."""
     s3 = get_s3_client(endpoint_url)
     if not bucket_exists(bucket, endpoint_url):
@@ -42,11 +42,11 @@ def ensure_bucket(bucket: str, region: str = "us-east-1", endpoint_url: Optional
         logger.debug(f"Bucket already exists: s3://{bucket}")
 
 
-def list_objects(bucket: str, prefix: str = "", endpoint_url: Optional[str] = None) -> List[str]:
+def list_objects(bucket: str, prefix: str = "", endpoint_url: str | None = None) -> list[str]:
     """List all object keys under a prefix."""
     s3 = get_s3_client(endpoint_url)
     paginator = s3.get_paginator("list_objects_v2")
-    keys: List[str] = []
+    keys: list[str] = []
     for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
         for obj in page.get("Contents", []):
             keys.append(obj["Key"])
