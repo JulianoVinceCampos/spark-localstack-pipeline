@@ -1,0 +1,156 @@
+version: "3.9"
+
+networks:
+  pipeline-net:
+    driver: bridge
+
+volumes:
+  localstack-data:
+  spark-logs:
+
+services:
+  # ─── LocalStack (AWS emulation) ──────────────────────────────────────────────
+  localstack:
+    image: localstack/localstack:3.4
+    container_name: localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3,glue,athena,iam,sts
+      - DEBUG=0
+      - PERSISTENCE=1
+      - AWS_DEFAULT_REGION=us-east-1
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - localstack-data:/var/lib/localstack
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./scripts/init_localstack.sh:/etc/localstack/init/ready.d/init.sh
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - pipeline-net
+
+  # ─── Spark Master ─────────────────────────────────────────────────────────────
+  spark-master:
+    build:
+      context: .
+      dockerfile: docker/spark/Dockerfile
+    container_name: spark-master
+    hostname: spark-master
+    environment:
+      - SPARK_MODE=master
+      - SPARK_MASTER_HOST=spark-master
+      - SPARK_MASTER_PORT=7077
+      - SPARK_MASTER_WEBUI_PORT=8080
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ENDPOINT_URL=http://localstack:4566
+    ports:
+      - "8080:8080"
+      - "7077:7077"
+    volumes:
+      - ./src:/opt/spark/work-dir/src
+      - ./scripts:/opt/spark/work-dir/scripts
+      - ./data:/opt/spark/work-dir/data
+      - spark-logs:/opt/spark/logs
+    depends_on:
+      localstack:
+        condition: service_healthy
+    networks:
+      - pipeline-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  # ─── Spark Worker 1 ───────────────────────────────────────────────────────────
+  spark-worker-1:
+    build:
+      context: .
+      dockerfile: docker/spark/Dockerfile
+    container_name: spark-worker-1
+    hostname: spark-worker-1
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_WORKER_CORES=1
+      - SPARK_WORKER_WEBUI_PORT=8081
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ENDPOINT_URL=http://localstack:4566
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./src:/opt/spark/work-dir/src
+      - ./data:/opt/spark/work-dir/data
+      - spark-logs:/opt/spark/logs
+    depends_on:
+      spark-master:
+        condition: service_healthy
+    networks:
+      - pipeline-net
+
+  # ─── Spark Worker 2 ───────────────────────────────────────────────────────────
+  spark-worker-2:
+    build:
+      context: .
+      dockerfile: docker/spark/Dockerfile
+    container_name: spark-worker-2
+    hostname: spark-worker-2
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_WORKER_CORES=1
+      - SPARK_WORKER_WEBUI_PORT=8082
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ENDPOINT_URL=http://localstack:4566
+    ports:
+      - "8082:8082"
+    volumes:
+      - ./src:/opt/spark/work-dir/src
+      - ./data:/opt/spark/work-dir/data
+      - spark-logs:/opt/spark/logs
+    depends_on:
+      spark-master:
+        condition: service_healthy
+    networks:
+      - pipeline-net
+
+  # ─── Pipeline Runner (submits Spark jobs) ─────────────────────────────────────
+  pipeline-runner:
+    build:
+      context: .
+      dockerfile: docker/spark/Dockerfile
+    container_name: pipeline-runner
+    environment:
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ENDPOINT_URL=http://localstack:4566
+      - S3_BUCKET=pipeline-data
+      - BRONZE_PATH=s3a://pipeline-data/bronze
+      - SILVER_PATH=s3a://pipeline-data/silver
+      - GOLD_PATH=s3a://pipeline-data/gold
+    volumes:
+      - ./src:/opt/spark/work-dir/src
+      - ./scripts:/opt/spark/work-dir/scripts
+      - ./data:/opt/spark/work-dir/data
+    depends_on:
+      spark-master:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    networks:
+      - pipeline-net
+    command: ["tail", "-f", "/dev/null"]
