@@ -10,7 +10,6 @@ Usage:
 import os
 import sys
 import time
-from typing import List
 
 import click
 from loguru import logger
@@ -39,7 +38,7 @@ def setup_infrastructure() -> None:
     logger.success("Infrastructure ready.")
 
 
-def run_pipeline(steps: List[str]) -> None:
+def run_pipeline(steps: list[str]) -> None:
     """Execute the requested pipeline steps in order."""
     logger.info(f"Pipeline starting. Steps: {steps}")
     start_time = time.time()
