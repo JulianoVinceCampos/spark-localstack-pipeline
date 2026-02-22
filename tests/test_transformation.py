@@ -5,11 +5,7 @@ import pytest
 from pyspark.sql import functions as F
 
 from src.jobs.ingestion import add_ingestion_metadata, validate_schema
-from src.jobs.transformation import (
-    add_silver_columns,
-    clean_and_standardize,
-    deduplicate,
-)
+from src.jobs.transformation import add_silver_columns, clean_and_standardize, deduplicate
 
 
 @pytest.fixture()
@@ -47,24 +43,55 @@ class TestCleanAndStandardize:
         assert all(s == s.lower() for s in statuses)
 
     def test_negative_price_nullified(self, spark, bronze_df):
-        from pyspark.sql.types import DoubleType, StringType, StructField, StructType
         # Inject a record with negative price
-        bad_data = [("ORD-BAD", "CUST-X", "Test", "t@t.com", "Sul", "RS", "RS",
-                     "PROD-X", "Item", "Books", 1, -50.0, 0.0, 0.0, -50.0, -50.0,
-                     "pix", "completed", "2024-01-01 00:00:00", 2024, 1, 1, "2024-01-01")]
-        cols = [f.name for f in bronze_df.schema.fields
-                if f.name not in ("_ingested_at", "_source_path", "_pipeline_run_id")]
-        bad_df = add_ingestion_metadata(
-            spark.createDataFrame(bad_data, cols), "s3a://test/bronze"
-        )
+        bad_data = [
+            (
+                "ORD-BAD",
+                "CUST-X",
+                "Test",
+                "t@t.com",
+                "Sul",
+                "RS",
+                "RS",
+                "PROD-X",
+                "Item",
+                "Books",
+                1,
+                -50.0,
+                0.0,
+                0.0,
+                -50.0,
+                -50.0,
+                "pix",
+                "completed",
+                "2024-01-01 00:00:00",
+                2024,
+                1,
+                1,
+                "2024-01-01",
+            )
+        ]
+
+        cols = [
+            f.name
+            for f in bronze_df.schema.fields
+            if f.name not in ("_ingested_at", "_source_path", "_pipeline_run_id")
+        ]
+
+        bad_df = add_ingestion_metadata(spark.createDataFrame(bad_data, cols), "s3a://test/bronze")
         combined = bronze_df.union(bad_df)
+
         cleaned = clean_and_standardize(combined)
         bad_row = cleaned.filter(F.col("order_id") == "ORD-BAD").first()
         assert bad_row["unit_price"] is None
 
     def test_email_lowercased(self, bronze_df):
         cleaned = clean_and_standardize(deduplicate(bronze_df))
-        emails = [r.customer_email for r in cleaned.select("customer_email").collect() if r.customer_email]
+        emails = [
+            r.customer_email
+            for r in cleaned.select("customer_email").collect()
+            if r.customer_email
+        ]
         assert all(e == e.lower() for e in emails)
 
     def test_order_date_is_timestamp(self, bronze_df):
@@ -85,8 +112,11 @@ class TestAddSilverColumns:
         cleaned = clean_and_standardize(deduped)
         silver = add_silver_columns(cleaned)
         valid_buckets = {"low", "medium", "high", "premium"}
-        buckets = {r.revenue_bucket for r in silver.select("revenue_bucket").collect()
-                   if r.revenue_bucket}
+        buckets = {
+            r.revenue_bucket
+            for r in silver.select("revenue_bucket").collect()
+            if r.revenue_bucket
+        }
         assert buckets.issubset(valid_buckets)
 
     def test_has_is_discounted(self, bronze_df):
