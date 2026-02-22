@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Docker Compose Stack — Architecture</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0f1e;
+    --surface: #0f1829;
+    --surface2: #141e35;
+    --border: #1e3a5f;
+    --border-bright: #2563eb;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --spark: #f59e0b;
+    --spark2: #fbbf24;
+    --aws: #ff9900;
+    --runner: #10b981;
+    --runner2: #34d399;
+    --blue: #3b82f6;
+    --blue2: #60a5fa;
+    --glow-spark: rgba(245,158,11,0.15);
+    --glow-aws: rgba(255,153,0,0.15);
+    --glow-runner: rgba(16,185,129,0.15);
+  }
+
+  body {
+    background: var(--bg);
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    overflow-x: hidden;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(37,99,235,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(37,99,235,0.05) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .page-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 32px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .diagram {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 820px;
+  }
+
+  /* ── OUTER COMPOSE BOX ── */
+  .compose-box {
+    border: 1.5px solid var(--border-bright);
+    border-radius: 16px;
+    padding: 28px 28px 36px;
+    background: linear-gradient(145deg, #0d1525, #0a1020);
+    box-shadow:
+      0 0 0 1px rgba(37,99,235,0.1),
+      0 0 40px rgba(37,99,235,0.08),
+      inset 0 1px 0 rgba(255,255,255,0.04);
+    position: relative;
+    animation: fadeIn 0.6s ease both;
+  }
+
+  .compose-label {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg);
+    padding: 2px 16px;
+    border: 1px solid var(--border-bright);
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--blue2);
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+  }
+
+  .compose-label .icon { margin-right: 6px; }
+
+  /* ── INNER ROW ── */
+  .inner-row {
+    display: flex;
+    gap: 20px;
+    align-items: stretch;
+  }
+
+  /* ── LEFT: LocalStack ── */
+  .localstack-box {
+    border: 1.5px solid #c05a00;
+    border-radius: 12px;
+    background: linear-gradient(160deg, #1a1200, #120d00);
+    box-shadow: 0 0 24px var(--glow-aws), inset 0 1px 0 rgba(255,153,0,0.08);
+    padding: 20px 16px 24px;
+    width: 170px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    position: relative;
+    animation: slideLeft 0.7s ease both 0.15s;
+  }
+
+  .localstack-label {
+    position: absolute;
+    top: -11px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1a1200;
+    border: 1px solid #c05a00;
+    border-radius: 5px;
+    padding: 1px 10px;
+    font-size: 10px;
+    color: var(--aws);
+    white-space: nowrap;
+    letter-spacing: 0.08em;
+  }
+
+  .localstack-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--aws);
+    text-align: center;
+    line-height: 1.3;
+  }
+
+  .localstack-title small {
+    display: block;
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 300;
+    color: rgba(255,153,0,0.6);
+    margin-top: 2px;
+  }
+
+  .s3-buckets {
+    font-size: 10px;
+    color: rgba(255,153,0,0.75);
+    line-height: 1.8;
+  }
+
+  .s3-buckets .bucket-title {
+    font-size: 10px;
+    font-weight: 500;
+    color: rgba(255,153,0,0.9);
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .bucket-item {
+    padding-left: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    margin: 2px 0;
+  }
+
+  .bucket-item::before { content: '├─'; color: var(--muted); }
+  .bucket-item:last-child::before { content: '└─'; color: var(--muted); }
+
+  .badge-bronze { color: #cd7f32; }
+  .badge-silver { color: #c0c0c0; }
+  .badge-gold   { color: #ffd700; }
+
+  /* ── RIGHT COLUMN ── */
+  .right-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* ── SPARK CLUSTER BOX ── */
+  .spark-box {
+    border: 1.5px solid #92400e;
+    border-radius: 12px;
+    background: linear-gradient(160deg, #1a1000, #110c00);
+    box-shadow: 0 0 24px var(--glow-spark), inset 0 1px 0 rgba(245,158,11,0.06);
+    padding: 20px 16px 20px;
+    position: relative;
+    animation: slideRight 0.7s ease both 0.2s;
+  }
+
+  .spark-label {
+    position: absolute;
+    top: -11px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1a1000;
+    border: 1px solid #92400e;
+    border-radius: 5px;
+    padding: 1px 12px;
+    font-size: 10px;
+    color: var(--spark);
+    white-space: nowrap;
+    letter-spacing: 0.08em;
+  }
+
+  .workers-row {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+  }
+
+  .worker-card {
+    border: 1px solid rgba(245,158,11,0.3);
+    border-radius: 8px;
+    padding: 12px 10px;
+    background: rgba(245,158,11,0.05);
+    text-align: center;
+    flex: 1;
+    transition: all 0.25s ease;
+    cursor: default;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .worker-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(245,158,11,0.5), transparent);
+  }
+
+  .worker-card:hover {
+    border-color: var(--spark);
+    background: rgba(245,158,11,0.1);
+    box-shadow: 0 0 20px rgba(245,158,11,0.12);
+    transform: translateY(-2px);
+  }
+
+  .worker-card.master {
+    border-color: rgba(245,158,11,0.5);
+    background: rgba(245,158,11,0.08);
+  }
+
+  .worker-icon {
+    font-size: 20px;
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  .worker-name {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    color: var(--spark2);
+  }
+
+  .worker-port {
+    font-size: 9px;
+    color: rgba(245,158,11,0.5);
+    margin-top: 3px;
+    font-weight: 300;
+  }
+
+  /* ── PIPELINE RUNNER ── */
+  .runner-box {
+    border: 1.5px solid #065f46;
+    border-radius: 12px;
+    background: linear-gradient(160deg, #041a12, #021108);
+    box-shadow: 0 0 24px var(--glow-runner), inset 0 1px 0 rgba(16,185,129,0.06);
+    padding: 18px 20px;
+    position: relative;
+    animation: slideUp 0.7s ease both 0.35s;
+  }
+
+  .runner-label {
+    position: absolute;
+    top: -11px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #041a12;
+    border: 1px solid #065f46;
+    border-radius: 5px;
+    padding: 1px 12px;
+    font-size: 10px;
+    color: var(--runner2);
+    white-space: nowrap;
+    letter-spacing: 0.08em;
+  }
+
+  .runner-cmd {
+    font-size: 11px;
+    color: var(--runner2);
+    line-height: 1.7;
+  }
+
+  .runner-cmd .prompt { color: var(--runner); opacity: 0.6; }
+  .runner-cmd .cmd-kw { color: #34d399; }
+  .runner-cmd .cmd-arg { color: #a7f3d0; }
+  .runner-cmd .cmd-val { color: var(--spark); }
+
+  .runner-steps {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+  }
+
+  .step-chip {
+    border: 1px solid rgba(16,185,129,0.25);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 9px;
+    color: var(--runner2);
+    background: rgba(16,185,129,0.06);
+    transition: all 0.2s;
+    cursor: default;
+  }
+
+  .step-chip:hover {
+    border-color: var(--runner);
+    background: rgba(16,185,129,0.12);
+    box-shadow: 0 0 10px rgba(16,185,129,0.15);
+  }
+
+  /* ── ARROWS SVG ── */
+  .arrows-layer {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    overflow: visible;
+  }
+
+  .arrow-path {
+    fill: none;
+    stroke: var(--border-bright);
+    stroke-width: 1.5;
+    stroke-dasharray: 6 4;
+    opacity: 0.5;
+    animation: dashMove 2s linear infinite;
+  }
+
+  @keyframes dashMove {
+    to { stroke-dashoffset: -20; }
+  }
+
+  .arrow-head {
+    fill: var(--border-bright);
+    opacity: 0.6;
+  }
+
+  /* ── LEGEND ── */
+  .legend {
+    margin-top: 24px;
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    flex-wrap: wrap;
+    animation: fadeIn 0.6s ease both 0.6s;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .legend-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    border: 1.5px solid;
+  }
+
+  /* Animations */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes slideLeft {
+    from { opacity: 0; transform: translateX(-20px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes slideRight {
+    from { opacity: 0; transform: translateX(20px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Pulse dots */
+  .pulse-dot {
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: pulse 2s infinite;
+    vertical-align: middle;
+    margin-right: 4px;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.85); }
+  }
+</style>
+</head>
+<body>
+
+<div class="page-title">🐳 &nbsp; Infrastructure Architecture Diagram</div>
+
+<div class="diagram">
+  <div class="compose-box">
+    <div class="compose-label">
+      <span class="icon">📦</span> Docker Compose Stack
+    </div>
+
+    <div class="inner-row">
+
+      <!-- LEFT: LocalStack -->
+      <div class="localstack-box" id="ls-box">
+        <div class="localstack-label">AWS Emulation</div>
+        <div class="localstack-title">
+          LocalStack
+          <small>(AWS S3)</small>
+        </div>
+        <div class="s3-buckets">
+          <div class="bucket-title">
+            <span class="pulse-dot" style="color: var(--aws); animation-delay: 0s;"></span>
+            S3 Buckets
+          </div>
+          <div style="padding-left: 6px; font-size: 9.5px; color: rgba(255,153,0,0.6); margin-bottom: 4px;">pipeline-data/</div>
+          <div class="bucket-item badge-bronze">bronze/</div>
+          <div class="bucket-item badge-silver">silver/</div>
+          <div class="bucket-item badge-gold">gold/</div>
+        </div>
+      </div>
+
+      <!-- RIGHT COL -->
+      <div class="right-col">
+
+        <!-- Spark Cluster -->
+        <div class="spark-box" id="spark-box">
+          <div class="spark-label">⚡ Spark Cluster</div>
+          <div class="workers-row">
+            <div class="worker-card master">
+              <span class="worker-icon">🎯</span>
+              <div class="worker-name">Spark Master</div>
+              <div class="worker-port">:8080 — UI</div>
+            </div>
+            <div class="worker-card">
+              <span class="worker-icon">⚙️</span>
+              <div class="worker-name">Worker 1</div>
+              <div class="worker-port">:8081</div>
+            </div>
+            <div class="worker-card">
+              <span class="worker-icon">⚙️</span>
+              <div class="worker-name">Worker 2</div>
+              <div class="worker-port">:8082</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pipeline Runner -->
+        <div class="runner-box" id="runner-box">
+          <div class="runner-label">🚀 Pipeline Runner Container</div>
+          <div class="runner-cmd">
+            <span class="prompt">$&nbsp;</span><span class="cmd-kw">python</span>
+            <span class="cmd-arg"> -m </span>
+            <span class="cmd-val">src.pipeline</span>
+            <span class="cmd-arg"> --steps </span>
+            <span class="cmd-val">ingestion, transform, load</span>
+          </div>
+          <div class="runner-steps">
+            <div class="step-chip">📥 ingestion</div>
+            <div class="step-chip">🔄 transform</div>
+            <div class="step-chip">🗃️ load</div>
+            <div class="step-chip">✅ validate</div>
+          </div>
+        </div>
+
+      </div><!-- /right-col -->
+    </div><!-- /inner-row -->
+
+    <!-- SVG arrows overlay -->
+    <svg class="arrows-layer" id="arrow-svg" aria-hidden="true"></svg>
+  </div>
+</div>
+
+<!-- Legend -->
+<div class="legend">
+  <div class="legend-item">
+    <div class="legend-dot" style="border-color: #ff9900; background: rgba(255,153,0,0.15);"></div>
+    LocalStack (S3)
+  </div>
+  <div class="legend-item">
+    <div class="legend-dot" style="border-color: #f59e0b; background: rgba(245,158,11,0.15);"></div>
+    Spark Cluster
+  </div>
+  <div class="legend-item">
+    <div class="legend-dot" style="border-color: #10b981; background: rgba(16,185,129,0.15);"></div>
+    Pipeline Runner
+  </div>
+  <div class="legend-item">
+    <div class="legend-dot" style="border-color: #3b82f6; background: rgba(59,130,246,0.15);"></div>
+    Compose Network
+  </div>
+</div>
+
+<script>
+// Draw dynamic SVG arrows after layout
+function drawArrows() {
+  const svg = document.getElementById('arrow-svg');
+  const compose = document.querySelector('.compose-box');
+  const ls = document.getElementById('ls-box');
+  const spark = document.getElementById('spark-box');
+  const runner = document.getElementById('runner-box');
+
+  const cRect = compose.getBoundingClientRect();
+
+  function rel(el) {
+    const r = el.getBoundingClientRect();
+    return {
+      top: r.top - cRect.top,
+      left: r.left - cRect.left,
+      right: r.right - cRect.left,
+      bottom: r.bottom - cRect.top,
+      cx: (r.left + r.right) / 2 - cRect.left,
+      cy: (r.top + r.bottom) / 2 - cRect.top,
+      w: r.width, h: r.height
+    };
+  }
+
+  const lsR = rel(ls);
+  const sparkR = rel(spark);
+  const runnerR = rel(runner);
+
+  svg.innerHTML = '';
+  svg.setAttribute('viewBox', `0 0 ${compose.offsetWidth} ${compose.offsetHeight}`);
+
+  function mkArrow(x1, y1, x2, y2, color = '#3b82f6', id = '') {
+    const markId = 'arr-' + Math.random().toString(36).slice(2);
+    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+    const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+    marker.setAttribute('id', markId);
+    marker.setAttribute('markerWidth', '8');
+    marker.setAttribute('markerHeight', '8');
+    marker.setAttribute('refX', '6');
+    marker.setAttribute('refY', '3');
+    marker.setAttribute('orient', 'auto');
+    const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    poly.setAttribute('points', '0 0, 6 3, 0 6');
+    poly.setAttribute('fill', color);
+    poly.setAttribute('opacity', '0.6');
+    marker.appendChild(poly);
+    defs.appendChild(marker);
+    svg.appendChild(defs);
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    const mx = (x1 + x2) / 2;
+    const d = `M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`;
+    path.setAttribute('d', d);
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', color);
+    path.setAttribute('stroke-width', '1.5');
+    path.setAttribute('stroke-dasharray', '6 4');
+    path.setAttribute('opacity', '0.55');
+    path.setAttribute('marker-end', `url(#${markId})`);
+    path.style.animation = 'dashMove 2s linear infinite';
+    svg.appendChild(path);
+  }
+
+  // LS → Spark (horizontal: right edge of LS to left edge of spark)
+  mkArrow(lsR.right, lsR.cy - 20, sparkR.left, sparkR.cy, '#f59e0b');
+
+  // LS → Runner (horizontal: right edge of LS to left edge of runner)
+  mkArrow(lsR.right, lsR.cy + 20, runnerR.left, runnerR.cy, '#10b981');
+
+  // Spark → Runner (vertical: bottom of spark to top of runner)
+  mkArrow(sparkR.cx, sparkR.bottom, runnerR.cx, runnerR.top, '#f59e0b');
+}
+
+// Run after fonts/layout settle
+window.addEventListener('load', () => setTimeout(drawArrows, 200));
+window.addEventListener('resize', () => setTimeout(drawArrows, 100));
+</script>
+</body>
+</html>
