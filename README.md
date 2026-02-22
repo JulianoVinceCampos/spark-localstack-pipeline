@@ -9,13 +9,12 @@
 
 ---
 
-## 📐 Architecture
-
 ## Architecture
 
 [![Architecture Diagram](architecture.png)](architecture.png)
 
-Diagrama interativo (HTML): [Abrir](docs/architecture.html)
+Diagrama interativo (GitHub Pages):
+https://julianovincecampos.github.io/spark-localstack-pipeline/architecture.html
 
 ### Medallion Layers
 
