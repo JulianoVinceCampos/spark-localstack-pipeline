@@ -5,9 +5,9 @@ Reads Silver Parquet and produces three Gold aggregations:
   2. product_performance – top products by revenue
   3. customer_segments  – RFM-style segmentation
 """
-
 from loguru import logger
-from pyspark.sql import DataFrame, SparkSession, functions as F
+from pyspark.sql import DataFrame, SparkSession
+from pyspark.sql import functions as F
 from pyspark.sql.window import Window
 
 
@@ -121,6 +121,7 @@ def build_customer_segments(df: DataFrame) -> DataFrame:
         .withColumn("_created_at", F.current_timestamp())
     )
 
+    # Log segment distribution
     rfm.groupBy("segment").count().orderBy("segment").show(truncate=False)
     return rfm
 
@@ -135,7 +136,11 @@ def write_gold_mart(df: DataFrame, gold_path: str, mart_name: str) -> int:
     return count
 
 
-def run_load(spark: SparkSession, silver_path: str, gold_path: str) -> dict:
+def run_load(
+    spark: SparkSession,
+    silver_path: str,
+    gold_path: str,
+) -> dict:
     """End-to-end load: Silver → Gold marts."""
     logger.info("=== LOAD JOB START ===")
     df_silver = read_silver(spark, silver_path)
