@@ -1,5 +1,5 @@
 """
-Transformation Job — Silver Layer
+Transformation Job: Silver Layer
 Reads Bronze Parquet, applies business rules, deduplicates, cleans data,
 and writes enriched Parquet to the Silver layer.
 """
@@ -131,5 +131,5 @@ def run_transformation(
     df_clean = clean_and_standardize(df_deduped)
     df_silver = add_silver_columns(df_clean)
     count = write_silver(df_silver, silver_path)
-    logger.success(f"=== TRANSFORMATION JOB DONE — {count:,} records ===")
+    logger.success(f"=== TRANSFORMATION JOB DONE: {count:,} records ===")
     return count

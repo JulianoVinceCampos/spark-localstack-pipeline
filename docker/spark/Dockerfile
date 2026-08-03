@@ -1,4 +1,9 @@
-FROM bitnami/spark:3.5.1
+# A Bitnami moveu todas as tags versionadas de docker.io/bitnami para
+# docker.io/bitnamilegacy em 28/08/2025. `bitnami/spark:3.5.1` responde 404
+# hoje, e era o que derrubava o job de Docker Build. A imagem legacy tem o
+# mesmo conteudo, entao os caminhos /opt/bitnami e o contrato de SPARK_MODE
+# usado no compose continuam validos. Nao voltar para docker.io/bitnami.
+FROM bitnamilegacy/spark:3.5.1
 
 USER root
 

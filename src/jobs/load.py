@@ -1,9 +1,9 @@
 """
-Load Job — Gold Layer  (Data Marts)
+Load Job: Gold Layer  (Data Marts)
 Reads Silver Parquet and produces three Gold aggregations:
-  1. sales_by_region    – revenue KPIs by region & month
-  2. product_performance – top products by revenue
-  3. customer_segments  – RFM-style segmentation
+  1. sales_by_region    - revenue KPIs by region & month
+  2. product_performance - top products by revenue
+  3. customer_segments  - RFM-style segmentation
 """
 
 from loguru import logger
