@@ -1,4 +1,4 @@
-# 🚀 Spark × LocalStack — End-to-End Data Pipeline
+# 🚀 Spark × LocalStack: End-to-End Data Pipeline
 
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/)
 [![PySpark 3.5](https://img.shields.io/badge/pyspark-3.5.1-orange.svg)](https://spark.apache.org/)
@@ -38,7 +38,7 @@ https://julianovincecampos.github.io/spark-localstack-pipeline/architecture.html
 
 ```bash
 # 1. Clone
-git clone https://github.com/YOUR_USERNAME/spark-localstack-pipeline.git
+git clone https://github.com/JulianoVinceCampos/spark-localstack-pipeline.git
 cd spark-localstack-pipeline
 
 # 2. Copy env file (defaults work out-of-the-box)
@@ -190,7 +190,7 @@ Push / PR
                                                      └─────────────┘
 ```
 
-- **Unit tests** run on every push/PR (no Docker required — uses moto)
+- **Unit tests** run on every push/PR (no Docker required, uses moto)
 - **E2E tests** run on merges to `main` (full LocalStack + Spark stack)
 - **Docker publish** triggers on `git tag v*`
 
@@ -224,4 +224,4 @@ aws --endpoint-url=http://localhost:4566 s3 cp \
 
 ## 📄 License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).

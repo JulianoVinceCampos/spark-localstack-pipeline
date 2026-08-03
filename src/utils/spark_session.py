@@ -1,5 +1,5 @@
 """
-Spark session factory — pre-configured for LocalStack S3A access.
+Spark session factory: pre-configured for LocalStack S3A access.
 """
 
 import os
@@ -57,7 +57,7 @@ def get_spark_session(
     )
 
     spark.sparkContext.setLogLevel(log_level)
-    logger.success(f"SparkSession ready — Spark {spark.version}")
+    logger.success(f"SparkSession ready: Spark {spark.version}")
     return spark
 
 

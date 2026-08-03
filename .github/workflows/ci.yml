@@ -198,7 +198,7 @@ jobs:
         run: docker compose down -v
 
   # ════════════════════════════════════════════════════════
-  #  5.  Publish (optional — push to Docker Hub)
+  #  5.  Publish (optional, push to Docker Hub)
   #      Only on tagged releases
   # ════════════════════════════════════════════════════════
   publish:

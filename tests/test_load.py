@@ -1,5 +1,5 @@
 """
-Unit tests for the load job (Gold layer — data marts).
+Unit tests for the load job (Gold layer, data marts).
 """
 
 import pytest
